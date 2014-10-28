@@ -77,7 +77,7 @@ foreach($files as $nname => $file)
 succ("Alright, deleting the remote files...");
 foreach($files as $file) {unlink($file);}
 
-info("Starting ffmpeg and letting it fork to the background. Outfile: " . out . "I'll write it's STDOUT and STDERR to tmp/enc.log.");
+info("Starting ffmpeg and letting it fork to the background. Outfile: " . out . " I'll write it's STDOUT and STDERR to tmp/enc.log.");
 $log = dirfix(tmp) . "enc.log";
 shell_exec("ffmpeg -i " . itmp . "%d.jpg -vcodec h264 -strict -2 -an " . out . " >>" . $log . " 2>>" . $log . "&");
 
