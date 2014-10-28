@@ -2,12 +2,12 @@
 <?php
 echo "\r                  \r"; // if you have executed this with the php CLI (php filename), we remove the shebang
 define("pi","pi"); // the url of pi (for avail_ck)
-define("imgdir","/data/motion/imgs/"); // remote directory with the imgs
-define("mountpoint","/media/PI"); // where the pi is mounted on the local system
+define("imgdir","/motion/imgs/"); // remote directory with the imgs
+define("mountpoint","/Volumes/DATA"); // where the pi is mounted on the local system
 define("absdir",dirfix(mountpoint . imgdir)); // absolute path to the img directory on the local system
 define("avail_ck",true); // check if the pi responds to http reuqests and if the mountpoint is writeable
 define("tmp",sys_get_temp_dir()); // tmpdir to use
-define("itmp",dirfix(dirfix(tmp) . "cpy")); // subdir in tmp
+define("itmp",dirfix(dirfix(tmp) . "cpy2")); // subdir in tmp
 define("colorize",true); // whether to colorize output
 define("exitonfailck",1); /* 0 = don't exit, just warn,
                         -1 = don't do anything,
@@ -59,6 +59,8 @@ succ("File list created.");
 
 info("Going to move all files to the local computer");
 if(!is_dir(itmp)){mkdir(itmp);}
+if(sizeof($files) < 10){error("Less than 10 image files, too short for a movie, exiting.");}
+
 foreach($files as $nname => $file)
 {
   $dest = itmp . $nname . ".jpg";
@@ -75,9 +77,9 @@ foreach($files as $nname => $file)
 succ("Alright, deleting the remote files...");
 foreach($files as $file) {unlink($file);}
 
-info("Starting ffmpeg and letting it fork to the background. I'll write it's STDOUT and STDERR to tmp/enc.log.");
+info("Starting ffmpeg and letting it fork to the background. Outfile: " . out . "I'll write it's STDOUT and STDERR to tmp/enc.log.");
 $log = dirfix(tmp) . "enc.log";
-shell_exec("ffmpeg -i /tmp/cpy/%d.jpg -vcodec h264 -strict -2 -an " . out . " >>" . $log . " 2>>" . $log . "&");
+shell_exec("ffmpeg -i " . itmp . "%d.jpg -vcodec h264 -strict -2 -an " . out . " >>" . $log . " 2>>" . $log . "&");
 
 die("Exiting.");
 
