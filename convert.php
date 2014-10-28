@@ -2,11 +2,12 @@
 <?php
 echo "\r                  \r"; // if you have executed this with the php CLI (php filename), we remove the shebang
 define("pi","pi"); // the url of pi (for avail_ck)
-define("imgdir","/data/motion/imgs"); // remote directory with the imgs
+define("imgdir","/data/motion/imgs/"); // remote directory with the imgs
 define("mountpoint","/media/PI"); // where the pi is mounted on the local system
-define("absmount",mountpoint . imgdir); // absolute path to the img directory on the local system
+define("absdir",dirfix(mountpoint . imgdir)); // absolute path to the img directory on the local system
 define("avail_ck",true); // check if the pi responds to http reuqests and if the mountpoint is writeable
 define("tmp",sys_get_temp_dir()); // tmpdir to use
+define("itmp",dirfix(dirfix(tmp) . "cpy")); // subdir in tmp
 define("colorize",true); // whether to colorize output
 define("exitonfailck",1); /* 0 = don't exit, just warn,
                         -1 = don't do anything,
@@ -14,7 +15,6 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          will always exit if the mountpoint is not writeable.
                          */
-
 
 if(avail_ck)
 {
@@ -49,6 +49,33 @@ if(avail_ck)
   info("Availability checks passed, moving forwards to getting a file list and copying...");
 }
 
+if(!defined("tmp")) { error("tmp is not set in configuration!");}
+if(!defined("absdir")) { error("absdir is not set in configuration!");}
+
+$files = glob(absdir . "*.jpg");
+succ("File list created.");
+
+info("Going to move all files to the local computer");
+if(!is_dir(itmp)){mkdir(itmp);}
+foreach($files as $nname => $file)
+{
+  $dest = itmp . $nname . ".jpg";
+  info("Copying {$file} to {$dest}...");
+  if(copy($file,$dest))
+  {
+    succ(basename($file) . " successfully copied!");
+  }
+  else
+  {
+    error("Something went wrong while copying.");
+  }
+}
+// trailing slash fix
+function dirfix($dir)
+{
+  $a = substr($dir,-1) == DIRECTORY_SEPARATOR ? $dir : $dir . DIRECTORY_SEPARATOR;
+  return $a;
+}
 // info, warn, error functions
 function info($msg)
 {
