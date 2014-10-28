@@ -7,7 +7,7 @@ define("mountpoint","/Volumes/DATA"); // where the pi is mounted on the local sy
 define("absdir",dirfix(mountpoint . imgdir)); // absolute path to the img directory on the local system
 define("avail_ck",true); // check if the pi responds to http reuqests and if the mountpoint is writeable
 define("tmp",sys_get_temp_dir()); // tmpdir to use
-define("itmp",dirfix(dirfix(tmp) . "cpy2")); // subdir in tmp
+define("itmp",dirfix(dirfix(tmp) . rand())); // subdir in tmp
 define("colorize",true); // whether to colorize output
 define("exitonfailck",1); /* 0 = don't exit, just warn,
                         -1 = don't do anything,
