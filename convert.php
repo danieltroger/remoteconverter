@@ -14,6 +14,25 @@ define("exitonfailck",0); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          */
 
+
+if(avail_ck)
+{
+  if(!defined("pi")) { error("pi is not set in configuration!");}
+  $headers = get_headers("http://" . pi);
+  if(!$headers)
+  {
+    $lmsg = "Couldn't make HEAD request to " . pi;
+    if(exitonfailck == 0){warn($lmsg);}
+    elseif(exitonfailck == 1 || exitonfailck == 2){error($lmsg);}
+  }
+  if($headers[0] != "HTTP/1.1 200")
+  {
+    $lmsg = "Response code was not 200, response: {$headers[0]}";
+    if(exitonfailck == 2){error($lmsg);}
+    elseif(exitonfailck == 1 || exitonfailck == 0){warn($lmsg);}
+  }
+}
+
 // info, warn, error functions
 function info($msg)
 {
@@ -26,20 +45,5 @@ function warn($msg)
 function error($msg)
 {
   die("\033[31mERROR: {$msg}\033[0m" . PHP_EOL);
-}
-info("this is info");
-warn("shit is happening!");
-error("shit happened!");
-if(avail_ck)
-{
-  $headers = get_headers("http://" . pi);
-  if(!$headers)
-  {
-    die("Couldn't make HEAD request to " . pi . PHP_EOL);
-  }
-  if($headers[0] != "HTTP/1.1 200")
-  {
-    die("Response code was ");
-  }
 }
 ?>
