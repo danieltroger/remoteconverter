@@ -15,6 +15,7 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          will always exit if the mountpoint is not writeable.
                          */
+define("out",dirfix(dirfix(mountpoint) . "old") . "out" . rand() . ".mov");
 
 if(avail_ck)
 {
@@ -51,6 +52,7 @@ if(avail_ck)
 
 if(!defined("tmp")) { error("tmp is not set in configuration!");}
 if(!defined("absdir")) { error("absdir is not set in configuration!");}
+if(!defined("out")) { error("out is not set in configuration!");}
 
 $files = glob(absdir . "*.jpg");
 succ("File list created.");
@@ -70,6 +72,15 @@ foreach($files as $nname => $file)
     error("Something went wrong while copying.");
   }
 }
+succ("Alright, deleting the remote files...");
+foreach($files as $file) {unlink($file);}
+
+info("Starting ffmpeg and letting it fork to the background. I'll write it's STDOUT and STDERR to tmp/enc.log.");
+$log = dirfix(tmp) . "enc.log";
+shell_exec("ffmpeg -i /tmp/cpy/%d.jpg -vcodec h264 -strict -2 -an " . out . " >>" . $log . " 2>>" . $log . "&");
+
+die("Exiting.");
+
 // trailing slash fix
 function dirfix($dir)
 {
