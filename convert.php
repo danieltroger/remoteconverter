@@ -7,7 +7,7 @@ define("mountpoint","/Volumes/DATA"); // where the pi is mounted on the local sy
 define("absdir",dirfix(mountpoint . imgdir)); // absolute path to the img directory on the local system
 define("avail_ck",true); // check if the pi responds to http reuqests and if the mountpoint is writeable
 define("tmp",sys_get_temp_dir()); // tmpdir to use
-define("itmp",dirfix(dirfix(tmp) . rand())); // subdir in tmp
+define("itmp",dirfix(dirfix(tmp) . "rconverter" . rand(1,100))); // subdir in tmp
 define("colorize",true); // whether to colorize output
 define("exitonfailck",1); /* 0 = don't exit, just warn,
                         -1 = don't do anything,
@@ -16,6 +16,11 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          will always exit if the mountpoint is not writeable.
                          */
 define("out",dirfix(dirfix(mountpoint) . "old") . "out" . rand() . ".mov");
+
+if(!defined("tmp")) { error("tmp is not set in configuration!");}
+if(!defined("absdir")) { error("absdir is not set in configuration!");}
+if(!defined("out")) { error("out is not set in configuration!");}
+if(!defined("colorize")) { error("colorize is not set in configuration!");}
 
 if(avail_ck)
 {
@@ -50,9 +55,6 @@ if(avail_ck)
   info("Availability checks passed, moving forwards to getting a file list and copying...");
 }
 
-if(!defined("tmp")) { error("tmp is not set in configuration!");}
-if(!defined("absdir")) { error("absdir is not set in configuration!");}
-if(!defined("out")) { error("out is not set in configuration!");}
 
 $files = glob(absdir . "*.jpg");
 succ("File list created.");
@@ -64,24 +66,27 @@ if(sizeof($files) < 10){error("Less than 10 image files, too short for a movie, 
 foreach($files as $nname => $file)
 {
   $dest = itmp . $nname . ".jpg";
-  info("Copying {$file} to {$dest}...");
-  if(copy($file,$dest))
+  echo("Copying {$file} to {$dest}...\r");
+  if(!copy($file,$dest))
   {
-    succ(basename($file) . " successfully copied!");
-  }
-  else
-  {
-    error("Something went wrong while copying.");
+    error(PHP_EOL . "Something went wrong while copying.");
   }
 }
-succ("Alright, deleting the remote files...");
-foreach($files as $file) {unlink($file);}
+echo PHP_EOL;
 
-info("Starting ffmpeg and letting it fork to the background. Outfile: " . out . " I'll write it's STDOUT and STDERR to tmp/enc.log.");
 $log = dirfix(tmp) . "enc.log";
-shell_exec("ffmpeg -i " . itmp . "%d.jpg -vcodec h264 -strict -2 -an " . out . " >>" . $log . " 2>>" . $log . "&");
+info("Starting ffmpeg and letting it fork to the background. Outfile: " . out . " I'll write it's STDOUT and STDERR to {$log}.");
+shell_exec("ffmpeg -i " . itmp . "%d.jpg -vcodec h264 -strict -2 -an " . out . " >" . $log . " 2>" . $log . "&");
 
-die("Exiting.");
+succ("Alright, deleting the remote files...");
+foreach($files as $file)
+{
+  echo "Deleting {$file}...\r";
+  unlink($file);
+}
+echo PHP_EOL;
+
+die("Exiting." . PHP_EOL);
 
 // trailing slash fix
 function dirfix($dir)
@@ -96,14 +101,14 @@ function info($msg)
 }
 function succ($msg)
 {
-  echo "\033[32m{$msg}\033[0m" . PHP_EOL;
+  echo colorize ? "\033[32m{$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
 }
 function warn($msg)
 {
-  echo "\033[33mWarning: {$msg}\033[0m" . PHP_EOL;
+  echo colorize ? "\033[33mWarning: {$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
 }
 function error($msg)
 {
-  die("\033[31mERROR: {$msg}\033[0m" . PHP_EOL);
+  die(colorize ? "\033[31mERROR: {$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL);
 }
 ?>
