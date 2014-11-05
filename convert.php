@@ -57,11 +57,13 @@ if(avail_ck)
 
 
 $files = glob(absdir . "*.jpg");
+$fnum = sizeof($files);
 succ("File list created.");
 
 info("Going to move all files to the local computer");
 if(!is_dir(itmp)){mkdir(itmp);}
-if(sizeof($files) < 10){error("Less than 10 image files, too short for a movie, exiting.");}
+if($fnum < 10){error("Less than 10 image files, too short for a movie, exiting.");}
+info("File list contains {$fnum} files.");
 
 foreach($files as $nname => $file)
 {
