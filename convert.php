@@ -84,7 +84,7 @@ if($fnum < min){error("Less than " . min . " image files, too short for a movie,
 info("File list contains {$fnum} files.");
 
 $in = tmp . "files.txt";
-$h = fopen($in, "a") or error("Can't open {$in} for reading.");
+$h = fopen($in, "w") or error("Can't open {$in} for writing.");
 foreach($files as $file)
 {
   if(file_exists($file))
@@ -97,7 +97,7 @@ succ("Wrote file list for ffmpeg to {$in}.");
 
 info("Executing ffmpeg. Outfile of video: " . out . PHP_EOL);
 
-$shell = popen(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out,"r");
+$shell = popen(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . " 2>&1","r");
 while(!feof($shell))
 {
   $buff = fgets($shell);
@@ -110,15 +110,19 @@ while(!feof($shell))
     echo $buff;
   }
 }
-fclose($shell);
+pclose($shell);
 
 succ("FFMpeg executed.");
 
+$files[] = $in;
+
 foreach($files as $file)
 {
-  if(basename($file) != "lastsnap.jpg" && !daemon)
+  if(!daemon)
   {
+    for($i = 0; $i < 50; $i ++) { echo " ";} echo "\r";
     echo "Deleting " . basename($file) . "\r";
+    usleep(50000);
   }
   //@unlink($file);
 }
@@ -128,7 +132,7 @@ succ("Deleted image files.");
 
 daemon ? fclose($log) : null;
 
-die("Exiting." . PHP_EOL);
+exit;
 
 // trailing slash fix
 function dirfix($dir)
