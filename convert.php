@@ -6,8 +6,7 @@ define("imgdir","/motion/imgs/"); // remote directory with the imgs
 define("mountpoint","/Volumes/DATA"); // where the pi is mounted on the local system
 define("absdir",dirfix(mountpoint . imgdir)); // absolute path to the img directory on the local system
 define("avail_ck",true); // check if the pi responds to http reuqests and if the mountpoint is writeable
-define("tmp",sys_get_temp_dir()); // tmpdir to use
-define("itmp",dirfix(dirfix(tmp) . "rconverter" . rand(1,100))); // subdir in tmp
+define("tmp",dirfix(sys_get_temp_dir())); // tmpdir to use
 define("colorize",true); // whether to colorize output
 define("exitonfailck",1); /* 0 = don't exit, just warn,
                         -1 = don't do anything,
@@ -16,11 +15,13 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          will always exit if the mountpoint is not writeable.
                          */
 define("out",dirfix(dirfix(mountpoint) . "old") . "out" . rand() . ".mov");
+define("ffmpeg",dirfix(getenv("HOME")) . "Downloads/ffmpeg");// absolute path to the ffmpeg binary
 
 if(!defined("tmp")) { error("tmp is not set in configuration!");}
 if(!defined("absdir")) { error("absdir is not set in configuration!");}
 if(!defined("out")) { error("out is not set in configuration!");}
 if(!defined("colorize")) { error("colorize is not set in configuration!");}
+if(!defined("ffmpeg")) { error("ffmpeg is not set in configuration!");}
 
 if(avail_ck)
 {
@@ -52,41 +53,47 @@ if(avail_ck)
   {
     error("Mountpoint doesn't exist or is not writeable. Exiting.");
   }
-  info("Availability checks passed, moving forwards to getting a file list and copying...");
+  info("Availability checks passed, moving forwards to getting a file list...");
 }
 
 
 $files = glob(absdir . "*.jpg");
 $fnum = sizeof($files);
-succ("File list created.");
 
-info("Going to move all files to the local computer");
-if(!is_dir(itmp)){mkdir(itmp);}
 if($fnum < 10){error("Less than 10 image files, too short for a movie, exiting.");}
 info("File list contains {$fnum} files.");
 
-foreach($files as $nname => $file)
-{
-  $dest = itmp . $nname . ".jpg";
-  echo("Copying {$file} to {$dest}...\r");
-  if(!copy($file,$dest))
-  {
-    error(PHP_EOL . "Something went wrong while copying.");
-  }
-}
-echo PHP_EOL;
-
-$log = dirfix(tmp) . "enc.log";
-info("Starting ffmpeg and letting it fork to the background. Outfile: " . out . " I'll write it's STDOUT and STDERR to {$log}.");
-shell_exec("ffmpeg -i " . itmp . "%d.jpg -vcodec h264 -strict -2 -an " . out . " >" . $log . " 2>" . $log . "&");
-
-succ("Alright, deleting the remote files...");
+$in = tmp . "files.txt";
+$dl = tmp . "delete.txt";
+$sh = tmp . "ffmpeg.sh";
+$log = tmp . "enc.log";
+$h1 = fopen($in, "a") or error("Can't open {$in} for reading.");
+$h2 = fopen($in, "a") or error("Can't open {$dl} for reading.");
 foreach($files as $file)
 {
-  echo "Deleting {$file}...\r";
-  unlink($file);
+  fwrite($h1,"file '" . $file . "'" . PHP_EOL);
+  fwrite($h2,$file . PHP_EOL);
 }
-echo PHP_EOL;
+fclose($h1);
+fclose($h2);
+succ("Wrote file list for ffmpeg to {$in} and list of files to delete to {$dl}");
+
+$h3 = fopen($sh,"w") or error("Can't open {$sh} for writing.");
+fwrite($h3,"#!/bin/bash
+" . ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . "
+for line in {$dl}
+do
+rm -v \$line
+done
+rm -v {$in} {$dl} {$sh}
+echo 'Exiting.'
+exit 0");
+fclose($h3);
+chmod($sh,0755) or error("Can't set mode of {$sh}.");
+succ("Successfully created shell script to call ffmpeg and delete all files and changed mode to 0755");
+
+info("Executing {$sh} and letting it fork to the background. Outfile of video: " . out . " I'll write it's STDOUT and STDERR to {$log}.");
+//shell_exec($sh . " > {$log} 2> {$log} &");
 
 die("Exiting." . PHP_EOL);
 
@@ -99,7 +106,7 @@ function dirfix($dir)
 // info, warn, error functions
 function info($msg)
 {
-  echo $msg . PHP_EOL;
+  echo colorize ? "\033[36m{$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
 }
 function succ($msg)
 {
