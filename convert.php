@@ -35,10 +35,11 @@ define("logfile", tmp . "convert.log");
 define("timezone","Europe/Stockholm");
 date_default_timezone_set(timezone);
 define("out",dirfix(dirfix(mountpoint) . "old") . "out_" . date("Y-m-d_H-i") . ".mov");
+define("min",50); // minimum amount of image files
 
-$log = fopen(logfile,"w") or die("Could not open logfile " . logfile . " for writing.");
+if(daemon) {$log = fopen(logfile,"w") or die("Could not open logfile " . logfile . " for writing.");}
 
-$checks = Array("tmp","ffmpeg","colorize","timezone","out","logfile","avail_ck","absdir","imgdir","mountpoint");
+$checks = Array("min","tmp","ffmpeg","colorize","timezone","out","logfile","avail_ck","absdir","imgdir","mountpoint");
 foreach($checks as $check) { if(!defined($check)) { error($check . " is not defined in configuration!");}}
 
 if(avail_ck)
@@ -79,7 +80,7 @@ if(avail_ck)
 $files = glob(absdir . "*.jpg");
 $fnum = sizeof($files);
 
-if($fnum < 10){error("Less than 10 image files, too short for a movie, exiting.");}
+if($fnum < min){error("Less than " . min . " image files, too short for a movie, exiting.");}
 info("File list contains {$fnum} files.");
 
 $in = tmp . "files.txt";
@@ -99,14 +100,14 @@ info("Executing ffmpeg. Outfile of video: " . out . PHP_EOL);
 $shell = popen(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out,"r");
 while(!feof($shell))
 {
-  $buff = "> " . fgets($shell);
+  $buff = fgets($shell);
   if(daemon)
   {
     fwrite($log,$buff);
   }
   else
   {
-    info($buff);
+    echo $buff;
   }
 }
 fclose($shell);
@@ -115,17 +116,17 @@ succ("FFMpeg executed.");
 
 foreach($files as $file)
 {
-  if($file != "lastsnap.jpg" && !daemon)
+  if(basename($file) != "lastsnap.jpg" && !daemon)
   {
     echo "Deleting " . basename($file) . "\r";
   }
-  @unlink($file);
+  //@unlink($file);
 }
 
 echo PHP_EOL;
 succ("Deleted image files.");
 
-fclose($log);
+daemon ? fclose($log) : null;
 
 die("Exiting." . PHP_EOL);
 
