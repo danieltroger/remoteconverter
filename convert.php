@@ -100,7 +100,7 @@ info("Executing ffmpeg. Outfile of video: " . out . PHP_EOL);
 $shell = popen(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . " 2>&1","r");
 while(!feof($shell))
 {
-  $buff = fgets($shell);
+  $buff = fread($shell,1024);
   if(daemon)
   {
     fwrite($log,$buff);
@@ -112,17 +112,19 @@ while(!feof($shell))
 }
 pclose($shell);
 
+echo PHP_EOL;
 succ("FFMpeg executed.");
 
 $files[] = $in;
+$clean = "";
+for($i = 0; $i < 50; $i ++) { $clean .= " ";} $clean .= "\r";
 
 foreach($files as $file)
 {
   if(!daemon)
   {
-    for($i = 0; $i < 50; $i ++) { echo " ";} echo "\r";
+    echo $clean;
     echo "Deleting " . basename($file) . "\r";
-    usleep(50000);
   }
   //@unlink($file);
 }
