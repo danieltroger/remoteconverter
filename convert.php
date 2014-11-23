@@ -1,7 +1,22 @@
-#!/usr/bin/env php
+#!/usr/local/php5/bin/php
 <?php
 echo "\r                  \r"; // if you have executed this with the php CLI (php filename), we remove the shebang
-date_default_timezone_set("Europe/Stockholm");
+
+if(function_exists("pcntl_fork") && @$argv[1] == "-b")
+{
+  define("daemon",true);
+  echo "Forking to background." . PHP_EOL;
+  if($pid = pcntl_fork())
+  {
+    exit;
+  }
+}
+else
+{
+  define("daemon",false);
+}
+
+
 define("pi","pi"); // the url of pi (for avail_ck)
 define("imgdir","/motion/imgs/"); // remote directory with the imgs
 define("mountpoint","/Volumes/DATA"); // where the pi is mounted on the local system
@@ -15,19 +30,22 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          will always exit if the mountpoint is not writeable.
                          */
-define("out",dirfix(dirfix(mountpoint) . "old") . "out_" . date("Y-m-d_H-i") . ".mov");
 define("ffmpeg",dirfix(getenv("HOME")) . "Downloads/ffmpeg");// absolute path to the ffmpeg binary
+define("logfile", tmp . "convert.log");
+define("timezone","Europe/Stockholm");
+date_default_timezone_set(timezone);
+define("out",dirfix(dirfix(mountpoint) . "old") . "out_" . date("Y-m-d_H-i") . ".mov");
 
-if(!defined("tmp")) { error("tmp is not set in configuration!");}
-if(!defined("absdir")) { error("absdir is not set in configuration!");}
-if(!defined("out")) { error("out is not set in configuration!");}
-if(!defined("colorize")) { error("colorize is not set in configuration!");}
-if(!defined("ffmpeg")) { error("ffmpeg is not set in configuration!");}
+$log = fopen(logfile,"w") or die("Could not open logfile " . logfile . " for writing.");
+
+$checks = Array("tmp","ffmpeg","colorize","timezone","out","logfile","avail_ck","absdir","imgdir","mountpoint");
+foreach($checks as $check) { if(!defined($check)) { error($check . " is not defined in configuration!");}}
 
 if(avail_ck)
 {
   info("Checking network reachability...");
   if(!defined("pi")) { error("pi is not set in configuration!");}
+  if(!defined("exitonfailck")) { error("exitonfailck is not set in configuration!");}
   $headers = get_headers("http://" . pi);
   if(!$headers)
   {
@@ -65,37 +83,49 @@ if($fnum < 10){error("Less than 10 image files, too short for a movie, exiting."
 info("File list contains {$fnum} files.");
 
 $in = tmp . "files.txt";
-$dl = tmp . "delete.txt";
-$sh = tmp . "ffmpeg.sh";
-$log = tmp . "enc.log";
-$h1 = fopen($in, "a") or error("Can't open {$in} for reading.");
-$h2 = fopen($dl, "a") or error("Can't open {$dl} for reading.");
+$h = fopen($in, "a") or error("Can't open {$in} for reading.");
 foreach($files as $file)
 {
-  fwrite($h1,"file '" . $file . "'" . PHP_EOL);
-  fwrite($h2,$file . PHP_EOL);
+  if(file_exists($file))
+  {
+    fwrite($h,"file '" . $file . "'" . PHP_EOL);
+  }
 }
-fclose($h1);
-fclose($h2);
-succ("Wrote file list for ffmpeg to {$in}, list of files to delete to {$dl}");
+fclose($h);
+succ("Wrote file list for ffmpeg to {$in}.");
 
-$h3 = fopen($sh,"w") or error("Can't open {$sh} for writing.");
-fwrite($h3,"#!/bin/bash
-" . ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . "
-for line in \$(cat {$dl})
-do
-rm -v \$line
-done
-echo 'Removing shit but keeping log.'
-rm -v {$in} {$dl} {$sh}
-echo 'Exiting.'
-exit 0");
-fclose($h3);
-chmod($sh,0755) or error("Can't set mode of {$sh}.");
-succ("Successfully created shell script to call ffmpeg and delete all files and changed it's mode to 0755");
+info("Executing ffmpeg. Outfile of video: " . out . PHP_EOL);
 
-info("Executing {$sh} and letting it fork to the background. Outfile of video: " . out . " I'll write it's STDOUT and STDERR to {$log}.");
-shell_exec($sh . " > {$log} 2> {$log} &");
+$shell = popen(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out,"r");
+while(!feof($shell))
+{
+  $buff = "> " . fgets($shell);
+  if(daemon)
+  {
+    fwrite($log,$buff);
+  }
+  else
+  {
+    info($buff);
+  }
+}
+fclose($shell);
+
+succ("FFMpeg executed.");
+
+foreach($files as $file)
+{
+  if($file != "lastsnap.jpg" && !daemon)
+  {
+    echo "Deleting " . basename($file) . "\r";
+  }
+  @unlink($file);
+}
+
+echo PHP_EOL;
+succ("Deleted image files.");
+
+fclose($log);
 
 die("Exiting." . PHP_EOL);
 
@@ -108,18 +138,46 @@ function dirfix($dir)
 // info, warn, error functions
 function info($msg)
 {
-  echo colorize ? "\033[36m{$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
+  if(daemon)
+  {
+    fwrite($GLOBALS['log'],$msg . PHP_EOL);
+  }
+  else
+  {
+    echo colorize ? "\033[36m{$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
+  }
 }
 function succ($msg)
 {
-  echo colorize ? "\033[32m{$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
+  if(daemon)
+  {
+    fwrite($GLOBALS['log'],$msg . PHP_EOL);
+  }
+  else
+  {
+    echo colorize ? "\033[32m{$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
+  }
 }
 function warn($msg)
 {
-  echo colorize ? "\033[33mWarning: {$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
+  if(daemon)
+  {
+    fwrite($GLOBALS['log'],$msg . PHP_EOL);
+  }
+  else
+  {
+    echo colorize ? "\033[33mWarning: {$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL;
+  }
 }
 function error($msg)
 {
+  if(daemon)
+  {
+    fwrite($GLOBALS['log'],$msg . PHP_EOL);
+  }
+  else
+  {
   die(colorize ? "\033[31mERROR: {$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL);
+  }
 }
 ?>
