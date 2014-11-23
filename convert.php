@@ -1,6 +1,7 @@
 #!/usr/bin/env php
 <?php
 echo "\r                  \r"; // if you have executed this with the php CLI (php filename), we remove the shebang
+date_default_timezone_set("Europe/Stockholm");
 define("pi","pi"); // the url of pi (for avail_ck)
 define("imgdir","/motion/imgs/"); // remote directory with the imgs
 define("mountpoint","/Volumes/DATA"); // where the pi is mounted on the local system
@@ -14,7 +15,7 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          will always exit if the mountpoint is not writeable.
                          */
-define("out",dirfix(dirfix(mountpoint) . "old") . "out" . rand() . ".mov");
+define("out",dirfix(dirfix(mountpoint) . "old") . "out_" . date("Y-m-d_H-i") . ".mov");
 define("ffmpeg",dirfix(getenv("HOME")) . "Downloads/ffmpeg");// absolute path to the ffmpeg binary
 
 if(!defined("tmp")) { error("tmp is not set in configuration!");}
@@ -68,7 +69,7 @@ $dl = tmp . "delete.txt";
 $sh = tmp . "ffmpeg.sh";
 $log = tmp . "enc.log";
 $h1 = fopen($in, "a") or error("Can't open {$in} for reading.");
-$h2 = fopen($in, "a") or error("Can't open {$dl} for reading.");
+$h2 = fopen($dl, "a") or error("Can't open {$dl} for reading.");
 foreach($files as $file)
 {
   fwrite($h1,"file '" . $file . "'" . PHP_EOL);
@@ -76,7 +77,7 @@ foreach($files as $file)
 }
 fclose($h1);
 fclose($h2);
-succ("Wrote file list for ffmpeg to {$in} and list of files to delete to {$dl}");
+succ("Wrote file list for ffmpeg to {$in}, list of files to delete to {$dl}");
 
 $h3 = fopen($sh,"w") or error("Can't open {$sh} for writing.");
 fwrite($h3,"#!/bin/bash
@@ -85,15 +86,16 @@ for line in {$dl}
 do
 rm -v \$line
 done
+echo 'Removing shit but keeping log.'
 rm -v {$in} {$dl} {$sh}
 echo 'Exiting.'
 exit 0");
 fclose($h3);
 chmod($sh,0755) or error("Can't set mode of {$sh}.");
-succ("Successfully created shell script to call ffmpeg and delete all files and changed mode to 0755");
+succ("Successfully created shell script to call ffmpeg and delete all files and changed it's mode to 0755");
 
 info("Executing {$sh} and letting it fork to the background. Outfile of video: " . out . " I'll write it's STDOUT and STDERR to {$log}.");
-//shell_exec($sh . " > {$log} 2> {$log} &");
+shell_exec($sh . " > {$log} 2> {$log} &");
 
 die("Exiting." . PHP_EOL);
 
