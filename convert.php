@@ -126,7 +126,7 @@ foreach($files as $file)
     echo $clean;
     echo "Deleting " . basename($file) . "\r";
   }
-  //@unlink($file);
+  @unlink($file);
 }
 
 echo PHP_EOL;
