@@ -1,4 +1,4 @@
-#!/usr/local/php5/bin/php
+#!/usr/bin/env php
 <?php
 echo "\r                  \r"; // if you have executed this with the php CLI (php filename), we remove the shebang
 
