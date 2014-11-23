@@ -82,7 +82,7 @@ succ("Wrote file list for ffmpeg to {$in}, list of files to delete to {$dl}");
 $h3 = fopen($sh,"w") or error("Can't open {$sh} for writing.");
 fwrite($h3,"#!/bin/bash
 " . ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . "
-for line in {$dl}
+for line in \$(cat {$dl})
 do
 rm -v \$line
 done
