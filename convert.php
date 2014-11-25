@@ -30,7 +30,7 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          will always exit if the mountpoint is not writeable.
                          */
-define("ffmpeg",dirfix(getenv("HOME")) . "Downloads/ffmpeg");// absolute path to the ffmpeg binary
+define("ffmpeg","/Users/admin/Downloads/ffmpeg");// absolute path to the ffmpeg binary
 define("logfile", tmp . "convert.log");
 define("timezone","Europe/Stockholm");
 date_default_timezone_set(timezone);
