@@ -41,6 +41,7 @@ if(daemon) {$log = fopen(logfile,"w") or die("Could not open logfile " . logfile
 
 $checks = Array("min","tmp","ffmpeg","colorize","timezone","out","logfile","avail_ck","absdir","imgdir","mountpoint");
 foreach($checks as $check) { if(!defined($check)) { error($check . " is not defined in configuration!");}}
+if(!file_exists(ffmpeg) || !is_executable(ffmpeg)) {error("Couldn't find or execute the ffmpeg binary " . ffmpeg . ", make sure the correct path is used and the file is marked as executeable.");}
 
 if(avail_ck)
 {
