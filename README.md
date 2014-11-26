@@ -19,3 +19,7 @@ Some thieves where in our flat and stole some shit,
 
 
 I am doing this from a remote computer because the pi is to slow (ofc).
+
+----------
+
+<img src="https://i.leetfil.es/fe5834ef.png" style="max-width: 100%;" />
