@@ -1,4 +1,4 @@
-#!/usr/bin/env php
+#!/usr/local/php5/bin/php
 <?php
 echo "\r                  \r"; // if you have executed this with the php CLI (php filename), we remove the shebang
 
@@ -37,6 +37,30 @@ date_default_timezone_set(timezone);
 define("out",dirfix(dirfix(mountpoint) . "old") . "out_" . date("Y-m-d_H-i") . ".mov");
 define("min",50); // minimum amount of image files
 
+function mount()
+{
+  if(!is_dir(mountpoint))
+  {
+    mkdir(mountpoint);
+  }
+  while(@$pass == "undefined" || strlen(@$pass) < 1)
+  {
+    echo "Please enter the password for the AFP server: ";
+    $stdin = fopen("php://stdin","r");
+    $pass = substr(fgets($stdin),0,-1); // get one line and remove the trailing newline
+    fclose($stdin);
+  }
+  shell("mount_afp afp://pi:{$pass}@pi.fritz.box/DATA " . mountpoint);
+  if(in_array(mountpoint,mnts()))
+  {
+    return true;
+  }
+  else
+  {
+    return false;
+  }
+}
+
 if(daemon) {$log = fopen(logfile,"w") or die("Could not open logfile " . logfile . " for writing.");}
 
 $checks = Array("min","tmp","ffmpeg","colorize","timezone","out","logfile","avail_ck","absdir","imgdir","mountpoint");
@@ -66,13 +90,29 @@ if(avail_ck)
     elseif(exitonfailck == 1 || exitonfailck == 0){warn($lmsg);}
   }
   info("Checking if mountpoint is writeable...");
-  if(is_writable( mountpoint ))
+  if(is_writable(mountpoint))
   {
     succ("Alright, mountpoint is writeable!");
   }
   else
   {
-    error("Mountpoint doesn't exist or is not writeable. Exiting.");
+    if(function_exists("mount") && !daemon)
+    {
+      warn("Mountpoint doesn't exist or is not writeable.");
+      info("mount() hook function found. Executing.");
+      if(mount())
+      {
+        succ("Mount succeeded. Continuing.");
+      }
+      else
+      {
+        error("Mount hook function failed. Exiting.");
+      }
+    }
+    else
+    {
+      error("Mountpoint doesn't exist or is not writeable. Exiting.");
+    }
   }
   info("Availability checks passed, moving forwards to getting a file list...");
 }
@@ -98,22 +138,9 @@ succ("Wrote file list for ffmpeg to {$in}.");
 
 info("Executing ffmpeg. Outfile of video: " . out . PHP_EOL);
 
-$shell = popen(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . " 2>&1","r");
-while(!feof($shell))
-{
-  $buff = fread($shell,1024);
-  if(daemon)
-  {
-    fwrite($log,$buff);
-  }
-  else
-  {
-    echo $buff;
-  }
-}
-pclose($shell);
+shell(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . " 2>&1","r");
 
-echo PHP_EOL;
+info("");
 succ("FFMpeg executed.");
 
 $files[] = $in;
@@ -187,5 +214,46 @@ function error($msg)
   {
   die(colorize ? "\033[31mERROR: {$msg}\033[0m" . PHP_EOL : $msg . PHP_EOL);
   }
+}
+function shell($cmd)
+{
+  $sh = popen($cmd,"r");
+  while(!feof($sh))
+  {
+    $buff = fread($sh,1024);
+    if(daemon)
+    {
+      fwrite($log,$buff);
+    }
+    else
+    {
+      echo $buff;
+    }
+  }
+  pclose($sh);
+}
+function mnts() // returns all currently mounted directories
+{
+  $b = Array();
+  $c = shell_exec("mount");
+  foreach(explode(PHP_EOL,$c) as $d)
+  {
+    $e = explode(" ",$d);
+    for($f = 0;$f<sizeof($e)-1;$f++)
+    {
+      if($e[$f] == "on")
+      {
+        $b[$e[0]] = Array();
+        $g = "";
+        for($h = 1;($e[$f+$h][0] != "(");$h++)
+        {
+          $g .= " " . $e[$f+$h];
+        }
+        $g = substr($g,1);
+        $b[$e[0]] = $g;
+      }
+    }
+  }
+  return $b;
 }
 ?>
