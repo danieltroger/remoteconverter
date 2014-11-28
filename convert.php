@@ -6,7 +6,8 @@ if(function_exists("pcntl_fork") && @$argv[1] == "-b")
 {
   define("daemon",true);
   echo "Forking to background." . PHP_EOL;
-  if($pid = pcntl_fork())
+  $pid = pcntl_fork();
+  if($pid)
   {
     exit;
   }
@@ -157,7 +158,7 @@ foreach($files as $file)
   @unlink($file);
 }
 
-echo PHP_EOL;
+info("");
 succ("Deleted image files.");
 
 daemon ? fclose($log) : null;
@@ -209,6 +210,7 @@ function error($msg)
   if(daemon)
   {
     fwrite($GLOBALS['log'],$msg . PHP_EOL);
+    posix_kill(posix_getpid(), SIGHUP);
   }
   else
   {
@@ -223,7 +225,7 @@ function shell($cmd)
     $buff = fread($sh,1024);
     if(daemon)
     {
-      fwrite($log,$buff);
+      fwrite($GLOBALS['log'],$buff);
     }
     else
     {
