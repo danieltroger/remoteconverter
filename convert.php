@@ -142,7 +142,14 @@ info("Executing ffmpeg. Outfile of video: " . out . PHP_EOL);
 shell(ffmpeg . " -f concat -i {$in} -vcodec h264 -strict -2 -an " . out . " 2>&1","r");
 
 info("");
-succ("FFMpeg executed.");
+if(file_exists(out) && filesize(out) > 0)
+{
+  succ("FFMpeg executed.");
+}
+else
+{
+  error("Something went wrong.");
+}
 
 $files[] = $in;
 $clean = "";
