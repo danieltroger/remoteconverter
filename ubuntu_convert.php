@@ -1,4 +1,4 @@
-#!/usr/local/php5/bin/php
+#!/usr/bin/php
 <?php
 echo "\r                  \r"; // if you have executed this with the php CLI (php filename), we remove the shebang
 
@@ -18,9 +18,9 @@ else
 }
 
 
-define("pi","pi"); // the url of pi (for avail_ck)
-define("imgdir","/motion/imgs/"); // remote directory with the imgs
-define("mountpoint","/Volumes/DATA"); // where the pi is mounted on the local system
+define("pi","pi"); // name to reach the pi
+define("imgdir","/data/motion/imgs/"); // remote directory with the imgs
+define("mountpoint","/media/PI"); // where the pi is mounted on the local system
 define("absdir",dirfix(mountpoint . imgdir)); // absolute path to the img directory on the local system
 define("avail_ck",true); // check if the pi responds to http reuqests and if the mountpoint is writeable
 define("tmp",dirfix(sys_get_temp_dir())); // tmpdir to use
@@ -31,7 +31,7 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          will always exit if the mountpoint is not writeable.
                          */
-define("ffmpeg","/Users/admin/Downloads/ffmpeg");// absolute path to the ffmpeg binary
+define("ffmpeg",`which ffmpeg`);// absolute path to the ffmpeg binary
 define("logfile", tmp . "convert.log");
 define("timezone","Europe/Stockholm");
 date_default_timezone_set(timezone);
@@ -44,14 +44,11 @@ function mount()
   {
     mkdir(mountpoint);
   }
-  while(@$pass == "undefined" || strlen(@$pass) < 1)
+  if(!is_writable(mountpoint))
   {
-    echo "Please enter the password for the AFP server: ";
-    $stdin = fopen("php://stdin","r");
-    $pass = substr(fgets($stdin),0,-1); // get one line and remove the trailing newline
-    fclose($stdin);
+    error("Cannot access " . mountpoint . ": permission denied");
   }
-  shell("mount_afp afp://pi:{$pass}@pi.fritz.box/DATA " . mountpoint);
+  shell("sshfs root@" . pi . ":/ " . mountpoint);
   if(in_array(mountpoint,mnts()))
   {
     return true;
@@ -90,8 +87,8 @@ if(avail_ck)
     if(exitonfailck == 2){error($lmsg);}
     elseif(exitonfailck == 1 || exitonfailck == 0){warn($lmsg);}
   }
-  info("Checking if mountpoint is writeable...");
-  if(is_writable(mountpoint))
+  info("Checking if mountpoint is writeable and a mountpoint...");
+  if(is_writable(mountpoint) && in_array(mountpoint,mnts()))
   {
     succ("Alright, mountpoint is writeable!");
   }
@@ -252,14 +249,13 @@ function mnts() // returns all currently mounted directories
     {
       if($e[$f] == "on")
       {
-        $b[$e[0]] = Array();
         $g = "";
-        for($h = 1;($e[$f+$h][0] != "(");$h++)
+        for($h = 1;($e[$f+$h] != "type");$h++)
         {
           $g .= " " . $e[$f+$h];
         }
         $g = substr($g,1);
-        $b[$e[0]] = $g;
+        $b[] = $g;
       }
     }
   }
