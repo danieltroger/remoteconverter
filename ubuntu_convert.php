@@ -31,11 +31,11 @@ define("exitonfailck",1); /* 0 = don't exit, just warn,
                          2 = same as 1 but even exit if the response code is not 200
                          will always exit if the mountpoint is not writeable.
                          */
-define("ffmpeg",`which ffmpeg`);// absolute path to the ffmpeg binary
+define("ffmpeg","/usr/local/bin/ffmpeg");// absolute path to the ffmpeg binary
 define("logfile", tmp . "convert.log");
 define("timezone","Europe/Stockholm");
 date_default_timezone_set(timezone);
-define("out",dirfix(dirfix(mountpoint) . "old") . "out_" . date("Y-m-d_H-i") . ".mov");
+define("out",dirfix(dirfix(absdir) . "../../old") . "out_" . date("Y-m-d_H-i") . ".mov");
 define("min",50); // minimum amount of image files
 
 function mount()
